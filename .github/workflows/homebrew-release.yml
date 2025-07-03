@@ -10,26 +10,59 @@ jobs:
     runs-on: ubuntu-latest
     name: Update Homebrew Formula
     steps:
-      - name: Release to Homebrew Tap
-        uses: Homebrew/actions/homebrew-releaser@master
-        with:
-          homebrew_owner: balintb
-          homebrew_tap: homebrew-tap
-          formula_folder: Formula
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          commit_owner: balintb
-          commit_email: ${{ github.actor }}@users.noreply.github.com
-          depends_on: |
-            bun
-          install: |
-            system "bun", "install"
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            (bin/"shellport").write <<~EOS
-              #!/bin/bash
-              exec bun run "#{libexec}/src/cli.ts" "$@"
-            EOS
+      - name: Get release info
+        id: release
+        run: |
+          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          curl -sL ${{ github.event.release.tarball_url }} | sha256sum | cut -d' ' -f1 > sha256.txt
+          echo "sha256=$(cat sha256.txt)" >> $GITHUB_OUTPUT
 
-            libexec.install Dir["*"]
-          test: |
-            assert_match "shellport - Display airport diagrams in terminal", shell_output("#{bin}/shellport --help")
-            assert_match "Error: Please provide a valid 4-letter ICAO code", shell_output("#{bin}/shellport ABC 2>&1", 1)
+      - name: Update Homebrew formula
+        run: |
+          git clone https://github.com/balintb/homebrew-tap.git tap
+          cd tap
+
+          # Create Formula directory if it doesn't exist
+          mkdir -p Formula
+
+          # Create the formula
+          cat > Formula/shellport.rb << 'EOF'
+          # frozen_string_literal: true
+          # typed: true
+
+          class Shellport < Formula
+            desc "Taxiway/runway maps in terminal"
+            homepage "https://github.com/balintb/shellport"
+            url "${{ github.event.release.tarball_url }}"
+            sha256 "${{ steps.release.outputs.sha256 }}"
+            license "MIT"
+
+            depends_on "bun"
+
+            def install
+              system "bun", "install"
+
+              (bin/"shellport").write <<~EOS
+                #!/bin/bash
+                exec bun run "#{libexec}/src/cli.ts" "$@"
+              EOS
+
+              libexec.install Dir["*"]
+            end
+
+            test do
+              assert_match "shellport - airport diagrams in terminal", shell_output("#{bin}/shellport --help")
+              assert_match "Error: Please provide a valid 4-letter ICAO code", shell_output("#{bin}/shellport ABC 2>&1", 1)
+            end
+          end
+          EOF
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/shellport.rb
+          git commit -m "Update shellport to ${{ steps.release.outputs.tag_name }}"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/balintb/homebrew-tap.git
