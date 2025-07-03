@@ -2,6 +2,12 @@
 
 Cli to display an airport twy/rwy map.
 
+## Install
+
+```bash
+brew install balintb/tap/shellport
+```
+
 ## Prerequisites
 
 ```bash
