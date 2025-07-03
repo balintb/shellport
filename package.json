@@ -1,0 +1,20 @@
+{
+  "name": "shellport",
+  "author": "balintb",
+  "version": "0.0.1",
+  "module": "src/cli.ts",
+  "type": "module",
+  "bin": {
+    "shellport": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
