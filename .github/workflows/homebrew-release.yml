@@ -1,0 +1,34 @@
+name: Homebrew Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew-releaser:
+    runs-on: ubuntu-latest
+    name: Update Homebrew Formula
+    steps:
+      - name: Release to Homebrew Tap
+        uses: Homebrew/actions/homebrew-releaser@master
+        with:
+          homebrew_owner: balintb
+          homebrew_tap: homebrew-tap
+          formula_folder: Formula
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit_owner: balintb
+          commit_email: ${{ github.actor }}@users.noreply.github.com
+          depends_on: |
+            bun
+          install: |
+            system "bun", "install"
+            
+            (bin/"shellport").write <<~EOS
+              #!/bin/bash
+              exec bun run "#{libexec}/src/cli.ts" "$@"
+            EOS
+            
+            libexec.install Dir["*"]
+          test: |
+            assert_match "shellport - Display airport diagrams in terminal", shell_output("#{bin}/shellport --help")
+            assert_match "Error: Please provide a valid 4-letter ICAO code", shell_output("#{bin}/shellport ABC 2>&1", 1)
