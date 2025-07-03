@@ -3,6 +3,7 @@ name: Homebrew Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   homebrew-releaser:
@@ -22,12 +23,12 @@ jobs:
             bun
           install: |
             system "bun", "install"
-            
+
             (bin/"shellport").write <<~EOS
               #!/bin/bash
               exec bun run "#{libexec}/src/cli.ts" "$@"
             EOS
-            
+
             libexec.install Dir["*"]
           test: |
             assert_match "shellport - Display airport diagrams in terminal", shell_output("#{bin}/shellport --help")
